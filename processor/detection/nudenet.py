@@ -7,6 +7,7 @@ adapter so the rest of the pipeline never depends on NudeNet's own
 output format directly.
 """
 from detection.base import BaseDetector, Detection
+from nudenet import NudeDetector
 
 UNSAFE_CLASSES = {
     "EXPOSED_BREAST_F",
@@ -20,8 +21,7 @@ CONFIDENCE_THRESHOLD = 0.5
 
 class NudeNetDetector(BaseDetector):
     def __init__(self, model_path: str = None):
-        # from nudenet import NudeDetector
-        # self._model = NudeDetector(model_path)
+        self._model = NudeDetector(model_path)
         self._model = None  # placeholder until the model is wired in
 
     def detect(self, frame) -> list[Detection]:

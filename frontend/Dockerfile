@@ -1,7 +1,10 @@
 FROM node:20-slim
 WORKDIR /app
+
 COPY package.json .
 RUN npm install
+
 COPY . .
-RUN npm run build
-CMD ["npm", "start"]
+
+EXPOSE 3000
+CMD ["npm", "run", "dev", "--", "-H", "0.0.0.0"]
