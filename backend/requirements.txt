@@ -16,7 +16,8 @@ numpy==1.26.4
 faster-whisper==1.0.3
 pydub==0.25.1
 anthropic==0.34.2
-
+nudenet==3.4.2
+ultralytics==8.2.103
 
 
 
