@@ -70,18 +70,59 @@ def slice_audio(audio_path: str, start_seconds: float, duration_seconds: float, 
     return output_path
 
 
-def to_hls(input_path: str, output_dir: str, segment_seconds: int = 6):
-    """Converts a processed mp4 chunk/video into an HLS playlist + .ts segments."""
+def to_hls(
+    input_path: str,
+    output_dir: str,
+    segment_seconds: int = 5,
+):
+    """
+    Convert a processed video into HLS segments.
+
+    Segments are generated at fixed boundaries and the playlist
+    is suitable for later stitching into the final VOD playlist.
+    """
+
     playlist = f"{output_dir}/index.m3u8"
+
     subprocess.run(
         [
-            "ffmpeg", "-y", "-i", input_path,
-            "-c:v", "h264", "-c:a", "aac",
-            "-hls_time", str(segment_seconds),
-            "-hls_playlist_type", "vod",
-            "-hls_segment_filename", f"{output_dir}/segment_%04d.ts",
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-pix_fmt",
+            "yuv420p",
+
+            "-c:a",
+            "aac",
+            "-ar",
+            "44100",
+
+            # Force keyframes at segment boundaries.
+            "-force_key_frames",
+            f"expr:gte(t,n_forced*{segment_seconds})",
+
+            "-hls_time",
+            str(segment_seconds),
+
+            "-hls_playlist_type",
+            "vod",
+
+            "-hls_flags",
+            "independent_segments",
+
+            "-hls_segment_filename",
+            f"{output_dir}/segment_%04d.ts",
+
             playlist,
         ],
-        check=True, capture_output=True,
+        check=True,
+        capture_output=True,
     )
+
     return playlist

@@ -18,8 +18,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", "backend"))
 from app.services import storage  # noqa: E402
 from app.models.detection import Detection as DetectionModel  # noqa: E402
 
-CHUNK_SECONDS = int(os.environ.get("CHUNK_SECONDS", 10))
-FRAME_SAMPLE_RATE = int(os.environ.get("FRAME_SAMPLE_RATE", 10))
+CHUNK_SECONDS = int(os.environ.get("CHUNK_SECONDS", 5))
+FRAME_SAMPLE_RATE = int(os.environ.get("FRAME_SAMPLE_RATE", 5))
 
 
 def run_video_pipeline(db, video_id: str, input_path: str, progress_cb=None) -> dict:
@@ -82,28 +82,53 @@ def run_video_pipeline(db, video_id: str, input_path: str, progress_cb=None) -> 
 
 
 def _stitch_master_playlist(video_id: str, playlist_entries, work_dir: str) -> str:
-    """Concatenates per-chunk HLS playlists into one ordered VOD playlist,
-    renumbering segments so ordering survives out-of-order chunk completion."""
+    """Concatenate per-chunk HLS playlists into one ordered VOD playlist."""
+
     master_path = os.path.join(work_dir, "master.m3u8")
-    lines = ["#EXTM3U", "#EXT-X-VERSION:3", "#EXT-X-PLAYLIST-TYPE:VOD", "#EXT-X-TARGETDURATION:6"]
+
+    lines = [
+        "#EXTM3U",
+        "#EXT-X-VERSION:3",
+        "#EXT-X-PLAYLIST-TYPE:VOD",
+        "#EXT-X-TARGETDURATION:5",
+    ]
 
     seg_counter = 0
-    for chunk_idx, hls_dir in sorted(playlist_entries, key=lambda t: t[0]):
+
+    for position, (chunk_idx, hls_dir) in enumerate(
+        sorted(playlist_entries, key=lambda t: t[0])
+    ):
+
+        # Each chunk was encoded independently,
+        # so tell the HLS player that a new timeline starts.
+        if position > 0:
+            lines.append("#EXT-X-DISCONTINUITY")
+
         chunk_playlist = os.path.join(hls_dir, "index.m3u8")
+
         with open(chunk_playlist) as f:
             for line in f:
                 line = line.strip()
+
                 if line.startswith("#EXTINF"):
                     lines.append(line)
+
                 elif line.endswith(".ts"):
                     new_name = f"segment_{seg_counter:04d}.ts"
-                    os.rename(os.path.join(hls_dir, line), os.path.join(work_dir, new_name))
+
+                    os.rename(
+                        os.path.join(hls_dir, line),
+                        os.path.join(work_dir, new_name),
+                    )
+
                     lines.append(new_name)
                     seg_counter += 1
 
     lines.append("#EXT-X-ENDLIST")
+
     with open(master_path, "w") as f:
         f.write("\n".join(lines))
+
     return master_path
 
 
