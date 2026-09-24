@@ -9,6 +9,8 @@ The model should be trained for the violence-related
 classes that your project wants to censor.
 """
 
+import os
+
 from detection.base import BaseDetector, Detection
 
 try:
@@ -24,11 +26,16 @@ class ViolenceDetector(BaseDetector):
 
     def __init__(
         self,
-        model_path: str = "models/violence.pt",
+        model_path: str = None,
         confidence_threshold: float = CONFIDENCE_THRESHOLD,
     ):
         self._model = None
         self.confidence_threshold = confidence_threshold
+
+        if model_path is None:
+            model_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "..", "..", "models", "violence.pt")
+            )
 
         if YOLO is None:
             print("[Violence] ultralytics package not installed.")

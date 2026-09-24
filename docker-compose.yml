@@ -69,6 +69,8 @@ services:
       context: .
       dockerfile: docker/Dockerfile.worker
     env_file: .env
+    volumes:
+      - ./cookies:/app/cookies
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,3 +95,4 @@ services:
 volumes:
   postgres_data:
   minio_data:
+

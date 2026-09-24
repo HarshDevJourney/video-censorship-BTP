@@ -9,6 +9,7 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend /app/backend
 COPY processor /app/processor
+COPY models /app/models
 
 WORKDIR /app/backend
 ENV PYTHONPATH="/app/backend:/app/processor"

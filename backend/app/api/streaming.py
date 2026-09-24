@@ -45,11 +45,22 @@ async def get_manifest(video_id: uuid.UUID, db: Session = Depends(get_db)):
         .all()
     )
 
+    # Do not publish a later chunk before an earlier one is ready. HLS would
+    # otherwise play the later chunk at the wrong timeline position, then
+    # jump backwards whenever the missing chunk completes.
+    contiguous_chunks = []
+    expected_index = 0
+    for chunk in completed_chunks:
+        if chunk.index != expected_index:
+            break
+        contiguous_chunks.append(chunk)
+        expected_index += 1
+
     is_fully_done = video.status == VideoStatus.COMPLETED
     playlist_type = "VOD" if is_fully_done else "EVENT"
 
     max_seg_duration = 6
-    for c in completed_chunks:
+    for c in contiguous_chunks:
         for seg in (c.hls_segments or []):
             max_seg_duration = max(max_seg_duration, int(seg["duration"]) + 1)
 
@@ -63,7 +74,7 @@ async def get_manifest(video_id: uuid.UUID, db: Session = Depends(get_db)):
 
     # Serve segments through the API so the browser never has to talk to the
     # internal MinIO hostname (minio:9000) used by the containers.
-    for i, chunk in enumerate(completed_chunks):
+    for i, chunk in enumerate(contiguous_chunks):
         if i > 0:
             lines.append("#EXT-X-DISCONTINUITY")
         for seg in (chunk.hls_segments or []):

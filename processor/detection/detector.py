@@ -13,7 +13,7 @@ class MultiDetector:
     def __init__(
         self,
         nudenet_model_path: str = None,
-        violence_model_path: str = "models/violence.pt",
+        violence_model_path: str = None,
         blood_model_path: str = "models/blood.pt",
     ):
 

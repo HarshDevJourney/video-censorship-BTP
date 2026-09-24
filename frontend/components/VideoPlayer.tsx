@@ -22,35 +22,27 @@ export default function VideoPlayer({ videoId, isDone }: { videoId: string; isDo
   const [waitingOnChunk, setWaitingOnChunk] = useState(false);
 
   const duration = chunks.reduce((sum, c) => sum + c.duration, 0);
+  const hasPlayableChunks = chunks.some((chunk) => chunk.status === "completed");
 
-  // Set up hls.js once, then keep reloading the manifest until fully done.
+  // HLS refreshes an EVENT playlist itself. Recreating the HLS instance while
+  // playing resets its buffer and causes repeated pauses.
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || !hasPlayableChunks) return;
 
-    const load = () => {
-      const savedTime = video.currentTime;
-      if (Hls.isSupported()) {
-        hlsRef.current?.destroy();
-        const hls = new Hls({ maxBufferLength: 30 });
-        hlsRef.current = hls;
-        hls.loadSource(manifestUrl(videoId));
-        hls.attachMedia(video);
-        hls.once(Hls.Events.MANIFEST_PARSED, () => {
-          if (savedTime > 0) video.currentTime = savedTime;
-        });
-      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = manifestUrl(videoId); // Safari native HLS
-      }
-    };
+    if (Hls.isSupported()) {
+      const hls = new Hls({ maxBufferLength: 30 });
+      hlsRef.current = hls;
+      hls.loadSource(manifestUrl(videoId));
+      hls.attachMedia(video);
+    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = manifestUrl(videoId); // Safari native HLS
+    }
 
-    load();
-    const reloadInterval = isDone ? null : setInterval(load, 4000);
     return () => {
-      if (reloadInterval) clearInterval(reloadInterval);
       hlsRef.current?.destroy();
     };
-  }, [videoId, isDone]);
+  }, [videoId, hasPlayableChunks]);
 
   // Poll chunk status for the buffering bar.
   useEffect(() => {
