@@ -1,19 +1,52 @@
-"""Runs all configured detectors on a frame and merges their outputs."""
+"""
+Runs all configured detectors on a frame
+and merges their outputs.
+"""
+
 from detection.nudenet import NudeNetDetector
 from detection.violence import ViolenceDetector
 from detection.blood import BloodDetector
 
 
 class MultiDetector:
-    def __init__(self):
+
+    def __init__(
+        self,
+        nudenet_model_path: str = None,
+        violence_model_path: str = "models/violence.pt",
+        blood_model_path: str = "models/blood.pt",
+    ):
+
         self.detectors = [
-            NudeNetDetector(),
-            ViolenceDetector(),
-            BloodDetector(),
+            NudeNetDetector(
+                model_path=nudenet_model_path
+            ),
+
+            ViolenceDetector(
+                model_path=violence_model_path
+            ),
+
+            BloodDetector(
+                model_path=blood_model_path
+            ),
         ]
 
     def detect(self, frame):
+
         results = []
-        for d in self.detectors:
-            results.extend(d.detect(frame))
+
+        for detector in self.detectors:
+
+            try:
+                results.extend(
+                    detector.detect(frame)
+                )
+
+            except Exception as exc:
+                print(
+                    f"[MultiDetector] "
+                    f"{detector.__class__.__name__} "
+                    f"failed: {exc}"
+                )
+
         return results

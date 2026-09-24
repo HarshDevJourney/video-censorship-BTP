@@ -26,7 +26,9 @@ class NudeNetDetector(BaseDetector):
     def __init__(self, model_path: str = None):
         self._model = None
         if NudeDetector is None:
+            print("[NudeNet] nudenet package not installed.")
             return
+
         try:
             self._model = NudeDetector(model_path) if model_path else NudeDetector()
         except Exception:
@@ -36,17 +38,40 @@ class NudeNetDetector(BaseDetector):
         if self._model is None:
             return []
 
-        raw = self._model.detect(frame)
+        try:
+            raw = self._model.detect(frame)
+
+        except Exception as exc:
+            print(f"[NudeNet] Detection failed: {exc}")
+            return []
+
         results = []
+
         for item in raw:
-            if item["class"] not in UNSAFE_CLASSES:
+            category = item.get("class")
+            confidence = float(item.get("score", 0.0))
+            box = item.get("box")
+
+            if category not in UNSAFE_CLASSES:
                 continue
-            if item["score"] < CONFIDENCE_THRESHOLD:
+
+            if confidence < CONFIDENCE_THRESHOLD:
                 continue
-            x1, y1, w, h = item["box"]
-            results.append(Detection(
-                category=item["class"].lower(),
-                confidence=float(item["score"]),
-                x1=int(x1), y1=int(y1), x2=int(x1 + w), y2=int(y1 + h),
-            ))
+
+            if not box or len(box) != 4:
+                continue
+
+            x, y, width, height = box
+
+            results.append(
+                Detection(
+                    category=category.lower(),
+                    confidence=confidence,
+                    x1=int(x),
+                    y1=int(y),
+                    x2=int(x + width),
+                    y2=int(y + height),
+                )
+            )
+            
         return results
