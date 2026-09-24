@@ -184,13 +184,17 @@ def process_chunk_task(self, video_id: str, chunk_id: str):
 
         # Audio: extract straight from this chunk's own file (guarantees sync
         # with this chunk's own frames), beep the flagged spans if any.
+        chunk_audio_final = None
         chunk_audio_raw = os.path.join(work_dir, "audio_raw.wav")
-        extract_audio(local_raw, chunk_audio_raw)
-        if words_in_chunk:
-            chunk_audio_final = os.path.join(work_dir, "audio_beeped.wav")
-            beep_censor_audio(chunk_audio_raw, words_in_chunk, chunk_audio_final)
-        else:
-            chunk_audio_final = chunk_audio_raw
+        try:
+            extract_audio(local_raw, chunk_audio_raw)
+            if words_in_chunk:
+                chunk_audio_final = os.path.join(work_dir, "audio_beeped.wav")
+                beep_censor_audio(chunk_audio_raw, words_in_chunk, chunk_audio_final)
+            else:
+                chunk_audio_final = chunk_audio_raw
+        except Exception:
+            chunk_audio_final = None
 
         # Visual censorship + re-encode with the (possibly beeped) audio.
         chunk_result = process_chunk(

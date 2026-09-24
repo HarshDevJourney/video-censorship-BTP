@@ -1,13 +1,16 @@
 """
 NudeNet-backed nudity detector.
 
-Swap the body of `detect()` for the real NudeNet call once the model is
-vendored in (e.g. `from nudenet import NudeDetector`). Kept as a thin
-adapter so the rest of the pipeline never depends on NudeNet's own
-output format directly.
+The rest of the pipeline only depends on BaseDetector. NudeNet is optional:
+if the package or weights are missing, detect() returns [] so chunks still
+process (no visual censorship) instead of crashing the worker.
 """
 from detection.base import BaseDetector, Detection
-from nudenet import NudeDetector
+
+try:
+    from nudenet import NudeDetector
+except ImportError:
+    NudeDetector = None
 
 UNSAFE_CLASSES = {
     "EXPOSED_BREAST_F",
@@ -21,14 +24,19 @@ CONFIDENCE_THRESHOLD = 0.5
 
 class NudeNetDetector(BaseDetector):
     def __init__(self, model_path: str = None):
-        self._model = NudeDetector(model_path)
-        self._model = None  # placeholder until the model is wired in
+        self._model = None
+        if NudeDetector is None:
+            return
+        try:
+            self._model = NudeDetector(model_path) if model_path else NudeDetector()
+        except Exception:
+            self._model = None
 
     def detect(self, frame) -> list[Detection]:
         if self._model is None:
-            return []  # no-op until a real model is configured
+            return []
 
-        raw = self._model.detect(frame)  # NudeNet's native output
+        raw = self._model.detect(frame)
         results = []
         for item in raw:
             if item["class"] not in UNSAFE_CLASSES:

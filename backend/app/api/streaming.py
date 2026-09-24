@@ -61,20 +61,36 @@ async def get_manifest(video_id: uuid.UUID, db: Session = Depends(get_db)):
         "#EXT-X-MEDIA-SEQUENCE:0",
     ]
 
-    # NOTE: only chunks that are COMPLETED contribute segments. A chunk that
-    # hasn't been reached yet simply has no entry — this is what makes
-    # "jump ahead, wait a moment for it to catch up" work: the player sees
-    # a playlist that currently ends before the seek target, buffers, and
-    # a re-fetch a few seconds later (once that chunk finishes) reveals it.
-    for chunk in completed_chunks:
+    # Serve segments through the API so the browser never has to talk to the
+    # internal MinIO hostname (minio:9000) used by the containers.
+    for i, chunk in enumerate(completed_chunks):
+        if i > 0:
+            lines.append("#EXT-X-DISCONTINUITY")
         for seg in (chunk.hls_segments or []):
-            key = storage.object_path(video_id, "output", seg["filename"])
-            url = storage.client.presigned_get_object(settings.MINIO_BUCKET, key)
             lines.append(f"#EXTINF:{seg['duration']:.3f},")
-            lines.append(url)
+            lines.append(f"/api/videos/{video_id}/hls/{seg['filename']}")
 
     if is_fully_done:
         lines.append("#EXT-X-ENDLIST")
 
     body = "\n".join(lines) + "\n"
     return Response(content=body, media_type="application/vnd.apple.mpegurl")
+
+
+@router.get("/{video_id}/hls/{filename}")
+async def get_hls_segment(video_id: uuid.UUID, filename: str):
+    """Proxy HLS segments from MinIO so the browser can fetch them from the API."""
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    key = storage.object_path(video_id, "output", filename)
+    try:
+        obj = storage.client.get_object(settings.MINIO_BUCKET, key)
+        try:
+            data = obj.read()
+        finally:
+            obj.close()
+            obj.release_conn()
+    except Exception:
+        raise HTTPException(status_code=404, detail="Segment not found")
+    media_type = "application/vnd.apple.mpegurl" if filename.endswith(".m3u8") else "video/MP2T"
+    return Response(content=data, media_type=media_type)

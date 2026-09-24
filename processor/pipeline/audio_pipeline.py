@@ -20,9 +20,8 @@ def detect_profanity_for_video(video_path: str, work_dir: str) -> list:
     Returns [] on any failure — callers should treat that as "ship audio
     unmodified" rather than failing the whole job."""
     raw_audio_path = os.path.join(work_dir, "audio_full.wav")
-    extract_audio(video_path, raw_audio_path)
-
     try:
+        extract_audio(video_path, raw_audio_path)
         words = transcribe_with_word_timestamps(raw_audio_path)
         flagged_indices = detect_words_to_censor(words)
     except Exception:

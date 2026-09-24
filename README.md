@@ -15,6 +15,7 @@ video to finish.
 - [How it works](#how-it-works)
 - [Seek-aware, priority-driven processing](#seek-aware-priority-driven-processing)
 - [Quick start](#quick-start)
+- [Run and use guide](./RUN_AND_USE.md)
 - [Configuration](#configuration)
 - [API reference](#api-reference)
 - [Project structure](#project-structure)
@@ -83,6 +84,10 @@ That starts the frontend, API, worker, PostgreSQL, Redis, and MinIO
 together. See [SETUP.md](./SETUP.md) for the full first-run checklist,
 including wiring in real detection models (they ship as stubs — see
 [Known limitations](#known-limitations)) and tuning worker concurrency.
+
+For a complete step-by-step walkthrough covering setup, health checks,
+uploads, YouTube URLs, progressive playback, logs, and shutdown, see
+[RUN_AND_USE.md](./RUN_AND_USE.md).
 
 ## Configuration
 

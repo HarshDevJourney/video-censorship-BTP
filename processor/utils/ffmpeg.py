@@ -39,18 +39,22 @@ def encode_frames_to_video(frames_dir: str, fps: float, output_path: str, audio_
         "-i", f"{frames_dir}/frame_%06d.png",
     ]
     if audio_source:
-        cmd += ["-i", audio_source, "-map", "0:v:0", "-map", "1:a:0?"]
-    cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", output_path]
+        cmd += ["-i", audio_source, "-map", "0:v:0", "-map", "1:a:0?", "-shortest"]
+        cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", output_path]
+    else:
+        cmd += ["-c:v", "libx264", "-pix_fmt", "yuv420p", output_path]
     subprocess.run(cmd, check=True, capture_output=True)
 
 
 def extract_audio(input_path: str, output_path: str):
     """Pulls the audio track out of a video into a standalone wav file."""
-    subprocess.run(
+    result = subprocess.run(
         ["ffmpeg", "-y", "-i", input_path, "-vn", "-acodec", "pcm_s16le",
          "-ar", "44100", "-ac", "2", output_path],
-        check=True, capture_output=True,
+        capture_output=True,
     )
+    if result.returncode != 0:
+        raise FileNotFoundError(f"No audio track in {input_path}")
     return output_path
 
 
